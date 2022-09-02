@@ -5,20 +5,20 @@ import warnings
 import logging
 import math
 
-from steelscript.common.app import Application
 from steelscript.common.service import UserAuth
 from steelscript.common import Service
-from steelscript.common.exceptions import RvbdHTTPException
+from steelscript.netprofiler.core import NetProfiler
+from steelscript.netprofiler.core.filters import TimeFilter
+from steelscript.netprofiler.core.report import TrafficSummaryReport
 from rich import print as rprint
 
 warnings.filterwarnings("ignore")
 logging.disable(logging.WARNING)
 
-class NetprofilerCLIApp(Application):
+class NetprofilerCLIApp(NetProfiler):
 
     def __init__(self, host, username, password):
-        super(Application).__init__()
-        self._api_url = "/api/profiler/1.14/"
+        super(NetProfiler).__init__()
         self._hostname = host
         self._username = username
         self._password = password
@@ -26,14 +26,57 @@ class NetprofilerCLIApp(Application):
     def get_hostname(self):
         return self._hostname
 
-    def get_information(self,info):
-        _info_url = self._api_url + info
-        netprofiler = Service("netprofiler", self._hostname, auth=UserAuth(self._username, self._password),
-                              supports_auth_basic=True, supports_auth_oauth=False)
-        content_dict = netprofiler.conn.json_request('GET', _info_url,
-                                                     extra_headers={'Content-Type': 'application/json'})
-        del netprofiler
-        return len(content_dict)
+    def _count_entries(self,netprofiler, columns, grouping, timefilter):
+        # initialize a new report, and run it
+        # set maximum number of rows to 100K so we are sure to get all data (more or less)
+        report = TrafficSummaryReport(netprofiler)
+        report.run(grouping, columns, timefilter=timefilter, limit=100000)
+
+        # grab the data, and legend (it should be what we passed in for most cases)
+        data = report.get_data(limit=100000)
+        legend = report.get_legend()
+
+        # once we have what we need, delete the report from the NetProfiler
+        report.delete()
+
+        # now count how many entries there were and return the value
+        if data != None:
+            nentries = len(data)
+        else:
+            nentries = 0
+        return nentries
+
+    def get_information(self,info,timerange):
+
+        netprofiler = NetProfiler(self._hostname,auth=UserAuth(self._username, self._password))
+
+        # create the time-range object
+        timefilter = TimeFilter.parse_range(timerange)
+
+        if info == 'applications':
+            # Collect the data for the number of applications
+            columns = [netprofiler.columns.key.app_name,
+                       netprofiler.columns.value.avg_bytes]
+            napps = self._count_entries(netprofiler, columns, 'app', timefilter)
+            del netprofiler
+            return napps
+
+        if info == 'host_group_types':
+            # Collect the data for the number of host groups - ByLocation is the default
+            columns = [netprofiler.columns.key.group_name,
+                       netprofiler.columns.value.avg_bytes]
+            ngrps = self._count_entries(netprofiler, columns, 'gro', timefilter)
+            del netprofiler
+            return ngrps
+
+        if info == 'interfaces':
+            columns = [netprofiler.columns.key.interface,
+                       netprofiler.columns.value.avg_bytes]
+            nifcs = self._count_entries(netprofiler, columns, 'ifc', timefilter)
+            del netprofiler
+            return nifcs
+
+
 
     def get_version(self):
         _version_url = '/api/common/1.1/info'
@@ -88,6 +131,7 @@ def main():
     parser.add_argument('-i', '--hostname', metavar='Hostname', help='Netprofilers IPv4 address or Hostname')
     parser.add_argument('-u', '--username', metavar='Username', help='Netprofilers REST API username')
     parser.add_argument('-p', '--password', metavar='Password', help='Netprofilers REST API password')
+    parser.add_argument('-t', '--timerange',metavar='TimeRange',help='Time range to be used for the data collection.')
     args = parser.parse_args()
 
     ### Ask for Netprofiler ip or hostname if not given via command line
@@ -106,6 +150,11 @@ def main():
     else:
         m_password = args.password.strip()
 
+    if args.timerange is None:
+        m_timerange = 'previous 1 d'
+    else:
+        m_timerange = args.timerange.strip()
+
     m_app = NetprofilerCLIApp(m_hostname,m_username,m_password)
 
     ### Check if port 443 on netprofiler can be reached
@@ -120,7 +169,7 @@ def main():
 
         ### Get the number of applications via REST
         try:
-            m_applications = m_app.get_information('applications')
+            m_applications = m_app.get_information('applications',m_timerange)
 
         except:
             results = f"Error retrieving information on {m_applications}"
@@ -128,7 +177,7 @@ def main():
 
         ### Get the number of hostgroups via REST
         try:
-            m_hostgroups = m_app.get_information('host_group_types')
+            m_hostgroups = m_app.get_information('host_group_types',m_timerange)
 
         except:
             results = f"Error retrieving information on {m_hostgroups}"
@@ -136,7 +185,7 @@ def main():
 
         ### Get the number of network interfaces via REST
         try:
-            m_interfaces = m_app.get_information('interfaces')
+            m_interfaces = m_app.get_information('interfaces',m_timerange)
 
         except:
             results = f"Error retrieving information on {m_interfaces}"
