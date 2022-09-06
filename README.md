@@ -10,15 +10,15 @@ The python script [getspecs.py](getspecs.py) has been compiled with [PyInstaller
 #pyinstaller --onefile \
 --hidden-import socket --hidden-import argparse --hidden-import sys --hidden-import warnings \
 --hidden-import logging --hidden-import math --hidden-import steelscript --hidden-import steelscript.netprofiler --hidden-import rich \
---hidden-import requests --hidden-import urllib3 \
+--hidden-import requests --hidden-import urllib3 --name getIQsizing \
 --paths /Users/devuser/PythonProjects/alluvio-iq/venv/lib/python3.9/site-packages --runtime-tmpdir /tmp \
 getspecs.py
 ````
 ## MacOS binary sha256sum
-For security purposes, please verify the checksum before running the downloaded [binary](getspecs)
+For security purposes, please verify the checksum before running the downloaded [binary](getIQsizing)
 ````
-#openssl sha256 getspecs 
-SHA256(getspecs)= 455478d85101cfd3efe08295b4e5cbbcc30eab862d03f7163d90ede577d400b0
+#openssl sha256 getIQsizing 
+SHA256(getIQsizing)= 455478d85101cfd3efe08295b4e5cbbcc30eab862d03f7163d90ede577d400b0
 ````
 
 ## Building Windows binary
@@ -29,14 +29,14 @@ The python script [getspecs.py](getspecs.py) has been compiled with [PyInstaller
 --hidden-import socket --hidden-import argparse --hidden-import sys --hidden-import warnings \
 --hidden-import logging --hidden-import math --hidden-import steelscript --hidden-import steelscript.netprofiler --hidden-import rich \
 --hidden-import requests --hidden-import urllib3 \
---paths C:\Users\administrator\PythonProjects\alluvio-iq\venv\Lib\site-packages --name getspecs_win \
+--paths C:\Users\administrator\PythonProjects\alluvio-iq\venv\Lib\site-packages --name getIQsizing_win \
 getspecs.py
 ````
 ## Windows binary sha256sum
-For security purposes, please verify the checksum before running the downloaded [binary](getspecs_win.exe)
+For security purposes, please verify the checksum before running the downloaded [binary](getIQsizing_win.exe)
 ````
-#openssl sha256 getspecs_win.exe
-SHA256(getspecs_win.exe)= 312dc5854a1b093315f359adba7be5d50290c164502a183abaaea12b4cb1f781
+#openssl sha256 getIQsizing_win.exe
+SHA256(getIQsizing_win.exe)= 312dc5854a1b093315f359adba7be5d50290c164502a183abaaea12b4cb1f781
 ````
 
 
