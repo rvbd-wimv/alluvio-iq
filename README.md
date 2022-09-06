@@ -11,14 +11,14 @@ The python script [getspecs.py](getspecs.py) has been compiled with [PyInstaller
 --hidden-import socket --hidden-import argparse --hidden-import sys --hidden-import warnings \
 --hidden-import logging --hidden-import math --hidden-import steelscript --hidden-import steelscript.netprofiler --hidden-import rich \
 --hidden-import requests --hidden-import urllib3 --name getIQsizing \
---paths /Users/devuser/PythonProjects/alluvio-iq/venv/lib/python3.9/site-packages --runtime-tmpdir /tmp \
+--paths /Users/devuser/PythonProjects/alluvio-iq/venv/lib/python3.9/site-packages \
 getspecs.py
 ````
 ## MacOS binary sha256sum
 For security purposes, please verify the checksum before running the downloaded [binary](getIQsizing)
 ````
 #openssl sha256 getIQsizing 
-SHA256(getIQsizing)= 0f3d4db8ecb66161dab203a47ace663142282d62247a7d72e5b6c152a0e5fe99
+SHA256(getIQsizing)= 007cdec540c0b2c5da76885e18949c6c7a9e45573f62ed73e9394818deeb2a9a
 ````
 
 ## Building Windows binary
@@ -36,7 +36,7 @@ getspecs.py
 For security purposes, please verify the checksum before running the downloaded [binary](getIQsizing_win.exe)
 ````
 #openssl sha256 getIQsizing_win.exe
-SHA256(getIQsizing_win.exe)= 9ff90b47be03ffc45d37eda13e08298cfc9c998b7bfe82e0cffee8957f479182
+SHA256(getIQsizing_win.exe)= 4fbf30e503a751a718add1364904f69c4f74775d6bd397301561d52a9c2bfe28
 ````
 
 

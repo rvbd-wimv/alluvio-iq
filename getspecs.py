@@ -10,6 +10,7 @@ from steelscript.common import Service
 from steelscript.netprofiler.core import NetProfiler
 from steelscript.netprofiler.core.filters import TimeFilter
 from steelscript.netprofiler.core.report import TrafficSummaryReport
+from steelscript.common.exceptions import RvbdHTTPException
 from rich import print as rprint
 
 warnings.filterwarnings("ignore")
@@ -80,8 +81,12 @@ class NetprofilerCLIApp(NetProfiler):
 
     def get_version(self):
         _version_url = '/api/common/1.1/info'
-        netprofiler = Service("netprofiler", self._hostname, auth=UserAuth(self._username, self._password),
-                              supports_auth_basic=True, supports_auth_oauth=False)
+        try:
+            netprofiler = Service("netprofiler", self._hostname, auth=UserAuth(self._username, self._password),supports_auth_basic=True, supports_auth_oauth=False)
+        except RvbdHTTPException:
+            rprint(f'[bold red]Username or Password incorrect![/]')
+            sys.exit()
+
         content_dict = netprofiler.conn.json_request('GET', _version_url,
                                                      extra_headers={'Content-Type': 'application/json'})
         del netprofiler
@@ -89,21 +94,27 @@ class NetprofilerCLIApp(NetProfiler):
         _mayor = int(_version[0:2])
         _minor = int(_version[3:5:1])
         if _mayor == 10 and _minor >= 23:
-            rprint(f'[bold green]Netprofiler is at version {_mayor}.{_minor} which is supported by Alluvio IQ[/]')
+            rprint(f'[bold green]NetProfiler is at version {_mayor}.{_minor} which is supported by Alluvio IQ[/]')
             return True
         else:
-            rprint(f'[bold red]Netprofiler is at version {_mayor}.{_minor} which is not supported by Alluvio IQ[/]')
+            rprint(f'[bold red]NetProfiler is at version {_mayor}.{_minor} which is not supported by Alluvio IQ[/]')
             return False
 
     def check_netprofiler_reachable(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = sock.connect_ex((self.get_hostname(), 443))
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)
+            result = sock.connect_ex((self.get_hostname(), 443))
+        except:
+            rprint(f'\n[bold red]unable to open socket to {self.get_hostname()}[/]')
+            sys.exit()
+
         if result == 0:
-            rprint("\n[bold green]Netprofiler is reachable, Port 443 is open[/]")
+            rprint("\n[bold green]NetProfiler is reachable, Port 443 is open[/]")
             sock.close()
             return True
         else:
-            rprint("\n[bold red]Netprofiler is not reachable, Port 443 is not open, check ip address or hostname[/]")
+            rprint("\n[bold red]NetProfiler is not reachable, Port 443 is not open, check ip address or hostname[/]")
             return False
 
     def create_report(self,applications,hostgroups,interfaces):
@@ -113,13 +124,13 @@ class NetprofilerCLIApp(NetProfiler):
         _unique_metrics_interfaces = interfaces * 3
 
         print('*****************************************************************************************************************************\n')
-        print('{:20s} {:30s} {:25s} {:30s} {:15s}'.format('Product', 'Object Kind', '#Unique Objects','#Metrics per Object','Unique Metrics'))
-        print('{:20s} {:30s} {:25s} {:30s} {:15s}'.format('--------','------------','----------------','-------------------','--------------'))
-        print('{:20s} {:30s} {:25s} {:30s} {:15s}'.format('Netprofiler','Applications',f'{applications}','5',f'{_unique_metrics_applications}'))
-        print('{:20s} {:30s} {:25s} {:30s} {:15s}'.format('Netprofiler','Locations(hostgroups)',f'{hostgroups}','',''))
-        print('{:20s} {:30s} {:25s} {:30s} {:15s}'.format('Netprofiler','Application(locations)',f'{_locations}','5',f'{_unique_metrics_locations}'))
-        print('{:20s} {:30s} {:25s} {:30s} {:15s}'.format('Netprofiler','Network interfaces',f'{interfaces}','3',f'{_unique_metrics_interfaces}'))
-        rprint('{:20s} {:30s} {:25s} {:30s} {:15s}'.format('Netprofiler total','','','',f'[bold magenta]{_unique_metrics_applications+_unique_metrics_locations+_unique_metrics_interfaces}[/]'))
+        print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('Product', 'Object Kind', '#Unique Objects','#Metrics per Object','Unique Metrics'))
+        print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('--------','------------','----------------','-------------------','--------------'))
+        print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetProfiler','Applications',f'{applications}','5',f'{_unique_metrics_applications}'))
+        print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetProfiler','Locations (ByLocation Host Groups)',f'{hostgroups}','',''))
+        print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetProfiler','Applications * Locations',f'{_locations}','5',f'{_unique_metrics_locations}'))
+        print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetProfiler','Network interfaces',f'{interfaces}','3',f'{_unique_metrics_interfaces}'))
+        rprint('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetProfiler total','','','',f'[bold magenta]{_unique_metrics_applications+_unique_metrics_locations+_unique_metrics_interfaces}[/]'))
         print('*****************************************************************************************************************************\n')
         _metric_packs=math.ceil((_unique_metrics_applications+_unique_metrics_locations+_unique_metrics_interfaces)/100000)
         rprint(f'[magenta]Number of metric packs:[/] [bold magenta]{_metric_packs}[/]\n')
@@ -127,26 +138,26 @@ class NetprofilerCLIApp(NetProfiler):
 
 def main():
 
-    parser = argparse.ArgumentParser(description='Alluvio IQ price estimator get parameters for Netprofiler.')
-    parser.add_argument('-i', '--hostname', metavar='Hostname', help='Netprofilers IPv4 address or Hostname')
-    parser.add_argument('-u', '--username', metavar='Username', help='Netprofilers REST API username')
-    parser.add_argument('-p', '--password', metavar='Password', help='Netprofilers REST API password')
-    parser.add_argument('-t', '--timerange',metavar='TimeRange',help='Time range to be used for the data collection.')
+    parser = argparse.ArgumentParser(description='Alluvio IQ price estimator get parameters for NetProfiler.')
+    parser.add_argument('-i', '--hostname', metavar='Hostname', help='NetProfiler IPv4 address or Hostname')
+    parser.add_argument('-u', '--username', metavar='Username', help='NetProfiler REST API username')
+    parser.add_argument('-p', '--password', metavar='Password', help='NetProfiler REST API password')
+    parser.add_argument('-t', '--timerange',metavar='TimeRange',help='Time range to be used for the data collection default="previous 1 d".')
     args = parser.parse_args()
 
     ### Ask for Netprofiler ip or hostname if not given via command line
     if args.hostname is None:
-        m_hostname = input('Please provide Netprofiler ipv4 address or Hostname: ').strip()
+        m_hostname = input('Please provide NetProfiler ipv4 address or Hostname: ').strip()
     else:
         m_hostname = args.hostname.strip()
 
     if args.username is None:
-        m_username = input('Please provide Netprofiler username: ').strip()
+        m_username = input('Please provide NetProfiler username: ').strip()
     else:
         m_username = args.username.strip()
 
     if args.password is None:
-        m_password = input('Please provide Netprofiler password: ').strip()
+        m_password = input('Please provide NetProfiler password: ').strip()
     else:
         m_password = args.password.strip()
 
@@ -161,7 +172,8 @@ def main():
     m_reachable = m_app.check_netprofiler_reachable()
 
     ### Check the netprofiler version
-    supported = m_app.get_version()
+    if m_reachable:
+        supported = m_app.get_version()
 
     ### Connect to Netprofiler
     #if m_reachable and supported:
@@ -192,6 +204,9 @@ def main():
             print(results)
 
         m_app.create_report(m_applications,m_hostgroups,m_interfaces)
+
+    else:
+        sys.exit()
 
 if __name__ == '__main__':
     main()
