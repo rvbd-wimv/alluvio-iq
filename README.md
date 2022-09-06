@@ -36,7 +36,7 @@ getspecs.py
 For security purposes, please verify the checksum before running the downloaded [binary](getspecs_win.exe)
 ````
 #openssl sha256 getspecs_win.exe
-HA256(getspecs_win.exe)= 312dc5854a1b093315f359adba7be5d50290c164502a183abaaea12b4cb1f781
+SHA256(getspecs_win.exe)= 312dc5854a1b093315f359adba7be5d50290c164502a183abaaea12b4cb1f781
 ````
 
 
