@@ -15,7 +15,7 @@ from rich import print as rprint
 warnings.filterwarnings("ignore")
 logging.disable(logging.WARNING)
 
-class NetprofilerCLIApp():
+class NetprofilerCLIApp(NetProfiler):
 
     def __init__(self, host, username, password):
         super(NetProfiler).__init__()
@@ -195,7 +195,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
