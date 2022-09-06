@@ -11,7 +11,7 @@ The python script [getspecs.py](getspecs.py) has been compiled with [PyInstaller
 --hidden-import socket --hidden-import argparse --hidden-import sys --hidden-import warnings \
 --hidden-import logging --hidden-import math --hidden-import steelscript --hidden-import steelscript.netprofiler --hidden-import rich \
 --hidden-import requests --hidden-import urllib3 \
---paths /Users/devuser/PythonProjects/alluvio-iq/venv/lib/python3.9/site-packages ----runtime-tmpdir $HOME \
+--paths /Users/devuser/PythonProjects/alluvio-iq/venv/lib/python3.9/site-packages --runtime-tmpdir $HOME \
 getspecs.py
 ````
 ## MacOS binary sha256sum
