@@ -11,21 +11,87 @@ from steelscript.netprofiler.core import NetProfiler
 from steelscript.netprofiler.core.filters import TimeFilter
 from steelscript.netprofiler.core.report import TrafficSummaryReport
 from steelscript.common.exceptions import RvbdHTTPException
+from steelscript.netim.core import NetIM
 from rich import print as rprint
 
 warnings.filterwarnings("ignore")
 logging.disable(logging.WARNING)
 
-class NetprofilerCLIApp(NetProfiler):
+class AlluvioDevice():
 
-    def __init__(self, host, username, password):
-        super(NetProfiler).__init__()
-        self._hostname = host
-        self._username = username
-        self._password = password
+    def __init__(self,device_type,hostname,port):
+        self._device_type = device_type
+        self._hostname = hostname
+        self._port = port
 
     def get_hostname(self):
         return self._hostname
+
+    def get_port(self):
+        return self._port
+
+    def get_device_type(self):
+        return self._device_type
+
+    def check_reachable(self):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)
+            result = sock.connect_ex((self.get_hostname(), self.get_port()))
+        except:
+            rprint(f'\n[bold red]unable to open socket to {self.get_hostname()}[/]')
+            sys.exit()
+
+        if result == 0:
+            rprint(f"\n[bold green]{self.get_device_type()} is reachable, Port {self.get_port()} is open[/]")
+            sock.close()
+            return True
+        else:
+            rprint(f"\n[bold red]{self.get_device_type()} is not reachable, Port {self.get_port()} is not open, check ip address or hostname[/]")
+            return False
+
+
+class NetIMCLIApp(AlluvioDevice):
+
+    def __init__(self, device_type,hostname,port,username, password):
+        super(AlluvioDevice).__init__()
+        self._device_type = device_type
+        self._hostname = hostname
+        self._port = port
+        self._username = username
+        self._password = password
+
+    def get_json_result(self,api_url):
+        _m_netim = NetIM(self._hostname,UserAuth(self._username,self._password))
+        _m_dict = _m_netim._get_json(api_url)
+        _m_results = []
+        _m_results.append(_m_dict['items'][0]['aggregatedPollerStatsBean']['totalDevices'])
+        _m_results.append(_m_dict['items'][0]['aggregatedPollerStatsBean']['polledIfcs'])
+        return _m_results
+
+    def create_report(self,devices,interfaces):
+        _unique_metrics_interfaces = interfaces *7
+
+        print('*****************************************************************************************************************************\n')
+        print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('Product', 'Object Kind', '#Unique Objects','#Metrics per Object','Unique Metrics'))
+        print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('--------','------------','----------------','-------------------','--------------'))
+        print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetIM','Network Interfaces',f'{interfaces}','7',f'{_unique_metrics_interfaces}'))
+        print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetIM','Network Devices',f'{devices}','1',f'{devices}'))
+        rprint('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetIM total',' ',' ',' ',f'[bold magenta]{_unique_metrics_interfaces+devices}[/]'))
+        print('*****************************************************************************************************************************\n')
+        _metric_packs=_unique_metrics_interfaces+devices
+        return _metric_packs
+
+
+class NetprofilerCLIApp(AlluvioDevice):
+
+    def __init__(self, device_type,hostname,port,username, password):
+        super(AlluvioDevice).__init__()
+        self._device_type = device_type
+        self._hostname = hostname
+        self._port = port
+        self._username = username
+        self._password = password
 
     def _count_entries(self,netprofiler, columns, grouping, timefilter):
         # initialize a new report, and run it
@@ -35,7 +101,6 @@ class NetprofilerCLIApp(NetProfiler):
 
         # grab the data, and legend (it should be what we passed in for most cases)
         data = report.get_data(limit=100000)
-        legend = report.get_legend()
 
         # once we have what we need, delete the report from the NetProfiler
         report.delete()
@@ -77,8 +142,6 @@ class NetprofilerCLIApp(NetProfiler):
             del netprofiler
             return nifcs
 
-
-
     def get_version(self):
         _version_url = '/api/common/1.1/info'
         try:
@@ -100,23 +163,6 @@ class NetprofilerCLIApp(NetProfiler):
             rprint(f'[bold red]NetProfiler is at version {_mayor}.{_minor} which is not supported by Alluvio IQ[/]')
             return False
 
-    def check_netprofiler_reachable(self):
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(5)
-            result = sock.connect_ex((self.get_hostname(), 443))
-        except:
-            rprint(f'\n[bold red]unable to open socket to {self.get_hostname()}[/]')
-            sys.exit()
-
-        if result == 0:
-            rprint("\n[bold green]NetProfiler is reachable, Port 443 is open[/]")
-            sock.close()
-            return True
-        else:
-            rprint("\n[bold red]NetProfiler is not reachable, Port 443 is not open, check ip address or hostname[/]")
-            return False
-
     def create_report(self,applications,hostgroups,interfaces):
         _unique_metrics_applications = applications *5
         _locations = applications * hostgroups
@@ -130,83 +176,117 @@ class NetprofilerCLIApp(NetProfiler):
         print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetProfiler','Locations (ByLocation Host Groups)',f'{hostgroups}','',''))
         print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetProfiler','Applications * Locations',f'{_locations}','5',f'{_unique_metrics_locations}'))
         print('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetProfiler','Network interfaces',f'{interfaces}','3',f'{_unique_metrics_interfaces}'))
-        rprint('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetProfiler total','','','',f'[bold magenta]{_unique_metrics_applications+_unique_metrics_locations+_unique_metrics_interfaces}[/]'))
+        rprint('{:20s} {:40s} {:25s} {:30s} {:15s}'.format('NetProfiler total',' ',' ',' ',f'[bold magenta]{_unique_metrics_applications+_unique_metrics_locations+_unique_metrics_interfaces}[/]'))
         print('*****************************************************************************************************************************\n')
-        _metric_packs=math.ceil((_unique_metrics_applications+_unique_metrics_locations+_unique_metrics_interfaces)/100000)
-        rprint(f'[magenta]Number of metric packs:[/] [bold magenta]{_metric_packs}[/]\n')
+        _metric_packs=_unique_metrics_applications+_unique_metrics_locations+_unique_metrics_interfaces
+        return _metric_packs
 
 
-def main():
+def main(args):
 
-    parser = argparse.ArgumentParser(description='Alluvio IQ price estimator get parameters for NetProfiler.')
-    parser.add_argument('-i', '--hostname', metavar='Hostname', help='NetProfiler IPv4 address or Hostname')
-    parser.add_argument('-u', '--username', metavar='Username', help='NetProfiler REST API username')
-    parser.add_argument('-p', '--password', metavar='Password', help='NetProfiler REST API password')
-    parser.add_argument('-t', '--timerange',metavar='TimeRange',help='Time range to be used for the data collection default="previous 1 d".')
-    args = parser.parse_args()
+    m_totals_netprofiler = None
+    m_totals_netim = None
 
-    ### Ask for Netprofiler ip or hostname if not given via command line
-    if args.hostname is None:
-        m_hostname = input('Please provide NetProfiler ipv4 address or Hostname: ').strip()
-    else:
-        m_hostname = args.hostname.strip()
+    if not args.nonetprofiler:
+        ### Ask for Netprofiler ip or hostname if not given via command line
+        if args.hostname is None:
+            m_hostname = input('Please provide NetProfiler ipv4 address or Hostname: ').strip()
+        else:
+            m_hostname = args.hostname.strip()
 
-    if args.username is None:
-        m_username = input('Please provide NetProfiler username: ').strip()
-    else:
-        m_username = args.username.strip()
+        if args.username is None:
+            m_username = input('Please provide NetProfiler username: ').strip()
+        else:
+            m_username = args.username.strip()
 
-    if args.password is None:
-        m_password = input('Please provide NetProfiler password: ').strip()
-    else:
-        m_password = args.password.strip()
+        if args.password is None:
+            m_password = input('Please provide NetProfiler password: ').strip()
+        else:
+            m_password = args.password.strip()
 
-    if args.timerange is None:
-        m_timerange = 'previous 1 d'
-    else:
-        m_timerange = args.timerange.strip()
+        if args.timerange is None:
+            m_timerange = 'previous 1 d'
+        else:
+            m_timerange = args.timerange.strip()
 
-    m_app = NetprofilerCLIApp(m_hostname,m_username,m_password)
+        m_netprofiler_app = NetprofilerCLIApp('NetProfiler',m_hostname,443,m_username,m_password)
 
-    ### Check if port 443 on netprofiler can be reached
-    m_reachable = m_app.check_netprofiler_reachable()
+        ### Check if port 443 on netprofiler can be reached
+        m_reachable = m_netprofiler_app.check_reachable()
 
-    ### Check the netprofiler version
-    if m_reachable:
-        supported = m_app.get_version()
+        ### Check the netprofiler version
+        #if m_reachable:
+        #    supported = m_app.get_version()
 
-    ### Connect to Netprofiler
-    #if m_reachable and supported:
-    if m_reachable:
+        ### Connect to Netprofiler
+        #if m_reachable and supported:
+        if m_reachable:
 
-        ### Get the number of applications via REST
-        try:
-            m_applications = m_app.get_information('applications',m_timerange)
+            ### Check the netprofiler version
+            supported = m_netprofiler_app.get_version()
 
-        except:
-            results = f"Error retrieving information on {m_applications}"
-            print(results)
+            ### Get the number of applications via REST
+            try:
+                m_applications = m_netprofiler_app.get_information('applications',m_timerange)
 
-        ### Get the number of hostgroups via REST
-        try:
-            m_hostgroups = m_app.get_information('host_group_types',m_timerange)
+            except:
+                results = f"Error retrieving information on {m_applications}"
+                print(results)
 
-        except:
-            results = f"Error retrieving information on {m_hostgroups}"
-            print(results)
+            ### Get the number of hostgroups via REST
+            try:
+                m_hostgroups = m_netprofiler_app.get_information('host_group_types',m_timerange)
 
-        ### Get the number of network interfaces via REST
-        try:
-            m_interfaces = m_app.get_information('interfaces',m_timerange)
+            except:
+                results = f"Error retrieving information on {m_hostgroups}"
+                print(results)
 
-        except:
-            results = f"Error retrieving information on {m_interfaces}"
-            print(results)
+            ### Get the number of network interfaces via REST
+            try:
+                m_interfaces = m_netprofiler_app.get_information('interfaces',m_timerange)
 
-        m_app.create_report(m_applications,m_hostgroups,m_interfaces)
+            except:
+                results = f"Error retrieving information on {m_interfaces}"
+                print(results)
+
+            m_totals_netprofiler = m_netprofiler_app.create_report(m_applications,m_hostgroups,m_interfaces)
+
+    #Check if netIM needs to added
+    if args.netim:
+        m_netim_hostname = input('Please provide NetIM ipv4 address or Hostname: ').strip()
+        m_netim_username = input('Please provide NetIM username: ').strip()
+        m_netim_password = input('Please provide NetIM password: ').strip()
+
+        m_netim_app = NetIMCLIApp('NetIM',m_netim_hostname,8543,m_netim_username,m_netim_password)
+
+        m_netim_reachable = m_netim_app.check_reachable()
+
+        if m_netim_reachable:
+            _api_url = '/api/netim/v2/pollers-stats'
+            list_result = m_netim_app.get_json_result(_api_url)
+            m_totals_netim = m_netim_app.create_report(list_result[0],list_result[1])
 
     else:
         sys.exit()
 
+    if m_totals_netprofiler is None:
+        m_totals_netprofiler = 0
+    if m_totals_netim is None:
+        m_totals_netim = 0
+
+    m_total = m_totals_netprofiler + m_totals_netim
+    rprint(f'[magenta]Estimated total:[/] [bold magenta]{m_total}[/]\n')
+    rprint(f'[magenta]Number of metric packs:[/] [bold magenta]{math.ceil((m_total) / 100000)}[/]\n')
+
+
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Alluvio IQ price estimator get parameters for NetProfiler.')
+    parser.add_argument('-i', '--hostname', metavar='Hostname', help='NetProfiler IPv4 address or Hostname')
+    parser.add_argument('-u', '--username', metavar='Username', help='NetProfiler REST API username')
+    parser.add_argument('-p', '--password', metavar='Password', help='NetProfiler REST API password')
+    parser.add_argument('-t', '--timerange', metavar='TimeRange',
+                        help='Time range to be used for the data collection default="previous 1 d".')
+    parser.add_argument("--nonetprofiler", help="Remove NetProfiler sizing", action="store_true")
+    parser.add_argument("--netim", help="Add NetIM sizing", action="store_true")
+    args = parser.parse_args()
+    main(args)
