@@ -150,8 +150,12 @@ class NetprofilerCLIApp(AlluvioDevice):
             rprint(f'[bold red]Username or Password incorrect![/]')
             sys.exit()
 
-        content_dict = netprofiler.conn.json_request('GET', _version_url,
-                                                     extra_headers={'Content-Type': 'application/json'})
+        try:
+            content_dict = netprofiler.conn.json_request('GET', _version_url,extra_headers={'Content-Type': 'application/json'})
+        except RvbdHTTPException:
+            rprint(f'[bold red]Something went wrong! Is this a NetProfiler appliance?[/]')
+            sys.exit()
+
         del netprofiler
         _version = content_dict['sw_version']
         _mayor = int(_version[0:2])

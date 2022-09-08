@@ -18,7 +18,7 @@ getspecs.py
 For security purposes, please verify the checksum before running the downloaded [binary](getIQsizing)
 ````
 #openssl sha256 getIQsizing 
-SHA256(getIQsizing)= cb7bdfaf5132b8056641331632b699b365c403889fed51ae5f4e8d6a762e4690
+SHA256(getIQsizing)= 3d8e02443dec82182dc2288d23bf783a5806f2f004853962a15d0ec2eb59ef34
 ````
 
 ## Building Windows binary
@@ -36,7 +36,7 @@ getspecs.py
 For security purposes, please verify the checksum before running the downloaded [binary](getIQsizing_win.exe)
 ````
 #openssl sha256 getIQsizing_win.exe
-SHA256(getIQsizing_win.exe)= 4fbf30e503a751a718add1364904f69c4f74775d6bd397301561d52a9c2bfe28
+SHA256(getIQsizing_win.exe)= fb30bf207a478e73a433d225eb8e45547fad890e4fa43a99134ac0c14f53eb7d
 ````
 
 
