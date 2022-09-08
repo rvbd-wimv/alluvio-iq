@@ -36,7 +36,7 @@ getspecs.py
 For security purposes, please verify the checksum before running the downloaded [binary](getIQsizing_win.exe)
 ````
 #openssl sha256 getIQsizing_win.exe
-SHA256(getIQsizing_win.exe)= fb30bf207a478e73a433d225eb8e45547fad890e4fa43a99134ac0c14f53eb7d
+SHA256(getIQsizing_win.exe)= 9b6890425d468f9624aa784554e1df49a6b475500f2bff5630080cfe13c63628
 ````
 
 
