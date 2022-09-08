@@ -5,6 +5,7 @@ import warnings
 import logging
 import math
 
+import pwinput
 from steelscript.common.service import UserAuth
 from steelscript.common import Service
 from steelscript.netprofiler.core import NetProfiler
@@ -65,8 +66,19 @@ class NetIMCLIApp(AlluvioDevice):
         _m_netim = NetIM(self._hostname,UserAuth(self._username,self._password))
         _m_dict = _m_netim._get_json(api_url)
         _m_results = []
-        _m_results.append(_m_dict['items'][0]['aggregatedPollerStatsBean']['totalDevices'])
-        _m_results.append(_m_dict['items'][0]['aggregatedPollerStatsBean']['polledIfcs'])
+        _total_devices = 0
+
+        for i in range(len(_m_dict['items'])):
+
+            _total_devices = _total_devices + _m_dict['items'][i]['aggregatedPollerStatsBean']['totalDevices']
+
+            for key in _m_dict['items'][i]:
+                if 'name' in key:
+                    if 'SNMP' in _m_dict['items'][i][key]:
+                        _total_interfaces = _m_dict['items'][i]['aggregatedPollerStatsBean']['polledIfcs']
+
+        _m_results.append(_total_devices)
+        _m_results.append(_total_interfaces)
         return _m_results
 
     def create_report(self,devices,interfaces):
@@ -204,7 +216,8 @@ def main(args):
             m_username = args.username.strip()
 
         if args.password is None:
-            m_password = input('Please provide NetProfiler password: ').strip()
+            m_password = pwinput.pwinput(prompt='Please provide NetProfiler password: ', mask='*').strip()
+            #m_password = input('Please provide NetProfiler password: ').strip()
         else:
             m_password = args.password.strip()
 
@@ -257,9 +270,22 @@ def main(args):
 
     #Check if netIM needs to added
     if args.netim:
-        m_netim_hostname = input('Please provide NetIM ipv4 address or Hostname: ').strip()
-        m_netim_username = input('Please provide NetIM username: ').strip()
-        m_netim_password = input('Please provide NetIM password: ').strip()
+
+        if args.hostname is None:
+            m_netim_hostname = input('Please provide NetIM ipv4 address or Hostname: ').strip()
+        else:
+            m_netim_hostname = args.hostname-netim.strip()
+
+        if args.username is None:
+            m_netim_username = input('Please provide NetIM username: ').strip()
+        else:
+            m_netim_username = args.username-netim.strip()
+
+        if args.password is None:
+            m_netim_password = pwinput.pwinput(prompt='Please provide NetIM password: ', mask='*').strip()
+            #m_netim_password = input('Please provide NetIM password: ').strip()
+        else:
+            m_netim_password = args.password-netim.strip()
 
         m_netim_app = NetIMCLIApp('NetIM',m_netim_hostname,8543,m_netim_username,m_netim_password)
 
@@ -288,8 +314,10 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--hostname', metavar='Hostname', help='NetProfiler IPv4 address or Hostname')
     parser.add_argument('-u', '--username', metavar='Username', help='NetProfiler REST API username')
     parser.add_argument('-p', '--password', metavar='Password', help='NetProfiler REST API password')
-    parser.add_argument('-t', '--timerange', metavar='TimeRange',
-                        help='Time range to be used for the data collection default="previous 1 d".')
+    parser.add_argument('-t', '--timerange', metavar='TimeRange',help='Time range to be used for the data collection default="previous 1 d".')
+    parser.add_argument('-in', '--hostname-netim', metavar='Hostname', help='NetIM IPv4 address or Hostname')
+    parser.add_argument('-un', '--username-netim', metavar='Username', help='NetIM REST API username')
+    parser.add_argument('-pn', '--password-netim', metavar='Password', help='NetIM REST API password')
     parser.add_argument("--nonetprofiler", help="Remove NetProfiler sizing", action="store_true")
     parser.add_argument("--netim", help="Add NetIM sizing", action="store_true")
     args = parser.parse_args()
